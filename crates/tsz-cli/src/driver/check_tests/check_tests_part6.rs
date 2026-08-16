@@ -7,6 +7,8 @@
                 "/export-default-function-properties.ts",
                 r#"
 type MarkOf<R extends { readonly mark: unknown }> = R["mark"];
+type LocalInstanceType<T extends new (...args: any[]) => any> =
+  T extends new (...args: any[]) => infer R ? R : any;
 export default class Schema<T = any> {
   readonly mark!: T;
 
@@ -24,7 +26,7 @@ export default class Schema<T = any> {
     return null as any;
   };
 
-  static makeExplicit = <R extends InstanceType<typeof Schema>>(
+  static makeExplicit = <R extends LocalInstanceType<typeof Schema>>(
     build: (x: number) => MarkOf<R>,
   ): R => null as any;
 }
