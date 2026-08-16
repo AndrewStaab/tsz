@@ -238,9 +238,31 @@ impl<'a> CheckerState<'a> {
                 .insert(sym_id, partial_ctor);
         }
         if let Some(name_sym) = class_name_sym {
+            // The first publication happens before the rough instance scan and
+            // carries only the self-referential Lazy return. The refresh happens
+            // immediately after that scan and carries `Lazy(Class) & { members }`.
+            // During that refreshed window, type-position lookups of the distinct
+            // name symbol of `export default class Foo` must see the rough instance
+            // rather than re-entering a zero-member instance build (#17570).
+            let is_refresh = self.ctx.window_partial_ctor_types.contains_key(&name_sym);
             self.ctx
                 .window_partial_ctor_types
                 .insert(name_sym, partial_ctor);
+
+            if is_refresh
+                && self
+                    .ctx
+                    .symbol_instance_types
+                    .get(&name_sym)
+                    .is_none_or(|ty| ty.is_any_unknown_or_error())
+                && let Some(instance_type) = construct_signatures_for_type(self.ctx.types, partial_ctor)
+                    .and_then(|sigs| sigs.first().map(|sig| sig.return_type))
+                && !instance_type.is_any_unknown_or_error()
+            {
+                self.ctx
+                    .symbol_instance_types
+                    .insert(name_sym, instance_type);
+            }
         }
     }
 
@@ -254,7 +276,20 @@ impl<'a> CheckerState<'a> {
             self.ctx.window_partial_ctor_types.remove(&sym_id);
         }
         if let Some(name_sym) = class_name_sym {
+            let provisional_instance = self
+                .ctx
+                .window_partial_ctor_types
+                .get(&name_sym)
+                .copied()
+                .and_then(|partial_ctor| construct_signatures_for_type(self.ctx.types, partial_ctor))
+                .and_then(|sigs| sigs.first().map(|sig| sig.return_type));
             self.ctx.window_partial_ctor_types.remove(&name_sym);
+
+            if let Some(provisional_instance) = provisional_instance
+                && self.ctx.symbol_instance_types.get(&name_sym) == Some(provisional_instance)
+            {
+                self.ctx.symbol_instance_types.remove(&name_sym);
+            }
         }
     }
 }

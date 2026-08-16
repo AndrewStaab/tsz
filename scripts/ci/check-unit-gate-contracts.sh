@@ -30,3 +30,6 @@ node scripts/ci/test-known-failures-check.mjs
 python3 scripts/ci/check-test-file-reachability.py
 python3 scripts/ci/test_check_test_file_reachability.py
 python3 scripts/ci/test_check_emit_regression_set.py
+
+# Temporary PR-only behavioral validation for tsz-org/tsz#17570.
+cargo test -p tsz-cli export_default_class_function_property_constraints_see_instance_members -- --nocapture
