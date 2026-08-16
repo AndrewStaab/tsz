@@ -23,6 +23,10 @@ export default class Schema<T = any> {
   ): R {
     return null as any;
   };
+
+  static makeExplicit = <R extends InstanceType<typeof Schema>>(
+    build: (x: number) => MarkOf<R>,
+  ): R => null as any;
 }
 "#,
             )],
